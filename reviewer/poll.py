@@ -235,8 +235,8 @@ def _review(item, dry_run, run_dir):
                AGENT_REVIEW_HEADLESS="1", AGENT_REVIEW_READONLY="1" if dry_run else "0", AGENT_REVIEW_CONFIG=str(Path(os.environ.get("AGENT_REVIEW_CONFIG") or Path(__file__).with_name("project.toml")).resolve()))
 
     # 工作流筛选信息传入两阶段模型进程，复核脚本无需命令前缀。
-    env['ARL_BRANCH'] = item.get('source_branch', BASE_BRANCH)
-    env['ARL_SHA'] = item.get('sha', '')
+    env['ARL_BRANCH'] = item.get('source_branch') or BASE_BRANCH
+    env['ARL_SHA'] = item.get('sha') or ''
     issue_types = CONFIG.get('workflow', {}).get('issue_types', ['bug', 'perf', 'robust', 'refactor'])
     selected_type = next((kind for kind in issue_types if kind in item.get('labels', []) or item.get('title', '').startswith('[' + kind + ']')), '')
     if selected_type:

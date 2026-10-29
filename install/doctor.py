@@ -167,7 +167,15 @@ def doctor(config, fix=False, offline=False):
     if host.startswith('-') or any(char.isspace() for char in host):
         report(False, '执行端 SSH 主机名格式错误')
         return problems
-    remote = "import json,shutil,subprocess,sys; print(json.dumps({'python':sys.version_info[:2],'git':bool(shutil.which('git')),'hermes':bool(shutil.which('hermes'))})); subprocess.run(['hermes','cron','list','--json'],check=True)"
+    # hermes 命令路径与安装器一致：fixer.hermes_cli；cron list 不支持 --json 时只读 cron/jobs.json
+    cli = json.dumps(config['fixer'].get('hermes_cli') or 'hermes')
+    jobs_file = json.dumps(str(Path(config['fixer']['hermes_home']) / 'cron' / 'jobs.json'))
+    remote = ("import json,os,shutil,subprocess,sys\n"
+              f"cli=os.path.expanduser({cli}); jobs=os.path.expanduser({jobs_file})\n"
+              "ok=bool(shutil.which(cli)) or os.access(cli, os.X_OK)\n"
+              "print(json.dumps({'python':sys.version_info[:2],'git':bool(shutil.which('git')),'hermes':ok}))\n"
+              "h=subprocess.run([cli,'cron','list','--help'],capture_output=True,text=True,check=True).stdout\n"
+              "print(subprocess.run([cli,'cron','list','--json'],capture_output=True,text=True,check=True).stdout if '--json' in h else open(jobs).read())\n")
     result = subprocess.run(['ssh', '-o', 'BatchMode=yes', host, 'python3 -'], input=remote, capture_output=True, text=True)
     report(result.returncode == 0, '执行端 Python、git、hermes 与定时任务列表可读取')
     if result.returncode == 0:

@@ -25,6 +25,9 @@ def yaml_sections(text):
         if match:
             current = [next(value for value in match.groups() if value is not None), line]
             sections.append(current)
+        elif current is not None and re.match(r'-(?:[ \t]|$)', line):
+            # 顶层键下的列表项可以写在第 0 列（YAML 允许），归入当前键
+            current[1] += line
         elif line.strip() and not line[0].isspace() and not line.startswith('#'):
             raise ValueError('配置包含无法解析的顶层 YAML，请人工核实')
         elif current is None:
@@ -155,15 +158,21 @@ def remote_install(payload):
     conf = payload['config']
     home = Path(conf['hermes_home']).expanduser()
     review = Path(conf['review_dir']).expanduser()
+    # 非交互 ssh 的 PATH 往往不含用户目录，hermes 命令路径可由 fixer.hermes_cli 指定
+    hermes = str(Path(conf.get('hermes_cli') or 'hermes').expanduser())
     stamp = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
     backup = home / ('agent-review-loop-backup-' + stamp)
     # 在写入前确认 CLI 能力；不支持的版本直接退出。
-    create_help = subprocess.run(['hermes', 'cron', 'create', '--help'], capture_output=True, text=True, check=True).stdout
-    edit_help = subprocess.run(['hermes', 'cron', 'edit', '--help'], capture_output=True, text=True, check=True).stdout
-    list_help = subprocess.run(['hermes', 'cron', 'list', '--help'], capture_output=True, text=True, check=True).stdout
-    if '--json' not in list_help:
-        raise RuntimeError('hermes cron list 缺少 --json，当前 CLI 版本需人工核实')
-    listing = json.loads(subprocess.run(['hermes', 'cron', 'list', '--json'], capture_output=True, text=True, check=True).stdout)
+    create_help = subprocess.run([hermes, 'cron', 'create', '--help'], capture_output=True, text=True, check=True).stdout
+    edit_help = subprocess.run([hermes, 'cron', 'edit', '--help'], capture_output=True, text=True, check=True).stdout
+    list_help = subprocess.run([hermes, 'cron', 'list', '--help'], capture_output=True, text=True, check=True).stdout
+    if '--json' in list_help:
+        listing = json.loads(subprocess.run([hermes, 'cron', 'list', '--json'], capture_output=True, text=True, check=True).stdout)
+    elif (home / 'cron' / 'jobs.json').is_file():
+        # 部分 hermes 版本的 cron list 没有 --json：只读任务存储文件，按名称匹配已有任务
+        listing = json.loads((home / 'cron' / 'jobs.json').read_text())
+    else:
+        raise RuntimeError('hermes cron list 缺少 --json，且找不到 cron/jobs.json，当前 CLI 版本需人工核实')
     existing = listing.get('jobs', listing) if isinstance(listing, dict) else listing
     if not isinstance(existing, list):
         raise RuntimeError('hermes cron list 的 JSON 格式无法识别')
@@ -195,16 +204,23 @@ def remote_install(payload):
             if len(matches) > 1:
                 raise RuntimeError('发现同名 hermes 定时任务，请人工核实')
             operation = 'edit' if matches else 'create'
-            cmd = ['hermes', 'cron', operation]
+            cmd = [hermes, 'cron', operation]
             if matches:
                 cmd.append(str(matches[0].get('id', matches[0].get('job_id'))))
             options = {'name': job['name'], 'schedule': job['schedule']}
             for key in ('deliver', 'workdir'):
                 if job.get(key):
                     options[key] = job[key]
-            for key, flag in (('prompt_file', 'prompt-file'), ('monitor_script', 'monitor'), ('script', 'script')):
-                if job.get(key):
-                    options[flag] = str(review / job[key])
+            # hermes 只接受 hermes_home/scripts 下的脚本名；任务说明以指向安装后说明文件的短提示传入
+            if job.get('monitor_script'):
+                options['monitor-script'] = Path(job['monitor_script']).name
+            if job.get('script'):
+                options['script'] = Path(job['script']).name
+            if job.get('prompt_file'):
+                prompt_path = home / 'cron' / conf.get('cron', {}).get('dispatcher_filename', job['prompt_file'])
+                options['prompt'] = (f'完整任务指令在 {prompt_path}，先完整读取该文件并严格按它执行；'
+                                     f'再读 {conf.get("rules_file") or review / "rules.md"}（规则以该文件为准）。'
+                                     '身份、处理顺序、升级上报条件、环境、输出格式均以这两个文件为准，不要凭记忆执行。')
             help_text = edit_help if matches else create_help
             for option, value in options.items():
                 if '--' + option not in help_text:
