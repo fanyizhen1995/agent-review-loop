@@ -284,6 +284,20 @@ def notify_merged(f, only=None):
         update_state(sent)
 
 
+def close_declined():
+    """带"暂不修复"范围标签且仍打开的执行方 issue：评论说明后关闭，避免占用打开 issue 的上限。"""
+    scope = CONFIG.get('workflow', {}).get('scope', {})
+    if not scope.get('close_declined', True) or gl.readonly():
+        return
+    f = gl.forge()
+    source = CONFIG.get('labels', {}).get('source', 'source::agent')
+    for issue in f.list_items('issue', 'opened', [source, 'scope::暂不修复']):
+        f.add_note('issue', issue['iid'], '已按"暂不修复"的决定关闭本 issue。以后需要修复时，重新打开本 issue 并回复"确认修复"即可。')
+        f.close('issue', issue['iid'])
+        log(f"issue #{issue['iid']} 已按暂不修复关闭")
+        event(f"issue #{issue['iid']} 已按暂不修复关闭：{issue.get('title', '')}")
+
+
 def auto_merge():
     """成员同意且评审通过时合入；冲突交执行方合并基准分支后重评。"""
     merge_settings = CONFIG.get('workflow', {}).get('merge', R.get('merge', {}))
@@ -396,6 +410,10 @@ def _main(dry_run, only, mode):
                     except (SystemExit, Exception) as exc:
                         log(f"自动合入检查失败：{exc}")
                         event(f"自动合入检查失败：{exc}")
+                    try:
+                        close_declined()
+                    except (SystemExit, Exception) as exc:
+                        log(f"关闭暂不修复 issue 失败：{exc}")
         now_utc = dt.datetime.now(dt.timezone.utc)
         def ready(x):
             # 用户评论 3 分钟、MR 5 分钟、其余 20 分钟静默期

@@ -51,6 +51,12 @@
 | `remove_source_branch` | 合入后尝试删除源分支 |
 | `approve_phrases`、`revoke_phrases` | 自定义同意与撤回短语列表，空列表沿用默认词组 |
 
+`[workflow.scope]`：
+
+| 参数 | 含义 |
+| --- | --- |
+| `close_declined` | 默认 true。执行方 issue 带 `scope::暂不修复` 时，评审脚本评论说明后关闭；重新打开并回复"确认修复"可恢复 |
+
 同意来自成员评论；最近有效同意或撤回决定当前状态。执行方和评审机器人不能作为同意人。分支保护和当前 HEAD 检查继续生效。
 
 `[workflow.register]`：
