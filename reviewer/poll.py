@@ -403,7 +403,12 @@ def _main(dry_run, only, mode):
             m = (USER_QUIET_MINUTES if x.get("author") == "用户" else
                  MR_QUIET_MINUTES if x["kind"] == "mr" and x.get("mode") != "reply" else QUIET_MINUTES)
             return t < now_utc - dt.timedelta(minutes=m)
-        items = sorted((x for x in gl.pending() + gl.replies() if ready(x)),
+        try:
+            candidates = gl.pending() + gl.replies()
+        except Exception as exc:  # 网络或跳板机偶发失败：记一行日志，本轮结束，下一轮再取
+            log(f"读取待评审条目失败：{exc}")
+            return
+        items = sorted((x for x in candidates if ready(x)),
                        key=lambda x: (x.get("author") != "用户", x["updated_at"]))
     for item in items:
         key = f"{item['kind']}:{item['iid']}"

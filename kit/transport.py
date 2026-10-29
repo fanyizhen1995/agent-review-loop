@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shlex
 import subprocess
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -85,6 +86,14 @@ class HTTPTransport:
             raise TransportError(result['status'])
         return result['status'], result['data']
 
+    def _ssh_options(self):
+        # 每个请求都会经过各跳 ssh；默认复用连接（ControlMaster），避免对共享跳板机频繁握手认证。
+        # 控制套接字放在各跳主机自己的 ~/.ssh 下，可用 transport.<角色>.reuse_connections=false 关闭。
+        options = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15']
+        if self.spec.get('reuse_connections', True):
+            options += ['-o', 'ControlMaster=auto', '-o', 'ControlPath=~/.ssh/arl-%C', '-o', 'ControlPersist=600']
+        return options
+
     def _ssh(self, envelope):
         import inspect
         source = 'import json, sys, urllib.request, urllib.error\n' + inspect.getsource(TransportError) + '\n' + inspect.getsource(NoRedirect) + '\n' + inspect.getsource(execute_request) + '\nprint(json.dumps(execute_request(json.load(sys.stdin))))'
@@ -94,11 +103,17 @@ class HTTPTransport:
         for host in reversed(hosts[1:]):
             if host.startswith('-'):
                 raise ValueError('SSH 主机不得以 - 开头')
-            remote = shlex.join(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', host, remote])
+            remote = shlex.join(['ssh', *self._ssh_options(), host, remote])
         if hosts[0].startswith('-'):
             raise ValueError('SSH 主机不得以 - 开头')
-        command = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', hosts[0], remote]
-        proc = subprocess.run(command, input=json.dumps(envelope), capture_output=True, text=True, timeout=180)
+        command = ['ssh', *self._ssh_options(), hosts[0], remote]
+        # 共享主机上偶发的连接中断重试一次；复用连接后重试成本很低
+        for attempt in range(2):
+            proc = subprocess.run(command, input=json.dumps(envelope), capture_output=True, text=True, timeout=180)
+            if proc.returncode == 0:
+                break
+            if attempt == 0:
+                time.sleep(2)
         if proc.returncode:
             raise TransportError(0, 'SSH 链调用失败')
         try:
