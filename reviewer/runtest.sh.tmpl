@@ -1,0 +1,5 @@
+#!/bin/bash
+# 复核阶段按 workflow.verify 重跑已配置的步骤。
+set -e
+script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
+exec python3 "$script_dir/verify_workflow.py" "$@"

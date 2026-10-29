@@ -1,0 +1,4 @@
+# 每个子任务使用独立 worktree。
+[delegation]
+worktree_isolation = {{ _generated.worktree_isolation_toml }}
+max_concurrent_children = {{ fixer.delegation.max_concurrent_children }}

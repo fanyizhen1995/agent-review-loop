@@ -1,0 +1,9 @@
+#!/bin/sh
+# 复制到 .git/hooks/pre-push 并设置可执行权限；私有规则保留在仓库外。
+set -eu
+if [ -z "${ARL_DENY_FILE:-}" ]; then
+    echo '发布检查失败：必须设置 ARL_DENY_FILE，指向仓库外的私有规则文件。' >&2
+    exit 2
+fi
+repo_root=$(git rev-parse --show-toplevel) || exit 2
+exec python3 "$repo_root/install/publish_check.py" --deny-file "$ARL_DENY_FILE"

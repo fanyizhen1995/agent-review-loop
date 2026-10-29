@@ -1,0 +1,6 @@
+# deny 命中即拒绝；不得通过改变命令写法绕过。
+[approvals]
+mode = "{{ fixer.approvals.mode }}"
+cron_mode = "{{ fixer.approvals.cron_mode }}"
+timeout = {{ fixer.approvals.timeout }}
+deny = {{ _generated.approval_deny_json }}

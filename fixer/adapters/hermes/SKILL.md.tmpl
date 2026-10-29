@@ -1,0 +1,17 @@
+---
+name: {{ project.name }}-code-review
+description: 创建或修改 {{ project.name }} 的 issue 或 MR 时使用。
+category: software-development
+---
+
+# {{ project.name }} 代码审视与整改
+
+流程规则（issue 与 MR 的结构、写作要求、标签、测试、开发与部署）全部以
+`{{ fixer.rules_file }}` 为准。开始前完整读取该文件；
+本技能不记录流程规则，与该文件冲突时以该文件为准。规则需要调整时，在{{ fixer.notify_channel }}简报中写"建议修改规则"。
+
+## 环境事实
+- 独立工作副本：`{{ fixer.repo }}`；共用仓库 `{{ fixer.shared_repo }}` 只读。
+- {{ _generated.forge_display }}：`{{ forge.base_url }}`，项目 `{{ forge.repository }}`（id {{ forge.project }}）。token 在 {{ _generated.fixer_credential_description }}，用 `{{ fixer.hermes_home }}/scripts/forge_api.py` 在进程内读取（终端命令里展开的 token 会被打码）。
+- 发现记录：`{{ fixer.review_dir }}/findings.md`；已审视文件：`reviewed-files.txt`。
+- 部署验证：按已安装规则的项目补充与 workflow.verify 执行。

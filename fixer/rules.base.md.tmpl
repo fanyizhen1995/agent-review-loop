@@ -1,0 +1,127 @@
+# {{ accounts.fixer_display }} 执行规则（{{ project.name }} 审视与改动）
+
+本文件由基础规则与项目可选 overlay 组成，每次处理一个 issue 或 MR 前重新读取。项目规则由项目目录维护；执行方不得自行改动已安装的规则、审批配置或定时任务。
+
+## 0. 规则维护
+
+- 技能和记忆只记录环境事实，流程规则以本文件为准。
+- 建议修改规则时，在简报中说明，由用户决定。
+
+## 1. 范围与环境
+
+- 只改 {{ project.name }} 仓库，项目环境与部署权限以项目补充规则为准。
+- 共享主机上不重启、不停止系统服务；不改 `/etc` 下的配置；不动非本任务创建的容器、进程或 Pod。
+- 命令被审批规则拦截时不换写法绕过，停下来通知用户；不修改审批配置。
+- {{ fixer.hardware_note }}
+- 凭据不写进 issue、MR、提交、日志。临时文件写到 `{{ fixer.scratch_dir }}`。
+
+## 2. 写作规则（issue、MR、评论、简报都适用）
+
+1. 使用标准术语，已有通用说法的概念不另造表述（"截断""checkpoint""违反唯一约束"）。
+2. 不使用比喻；需要读者推断指代对象的说法改为直接说明（"兜底 except"改为"通用异常处理分支"，"黑洞"改为"连接无响应"）。
+3. 表头和分类名使用中性名词：问题、现象、影响、结果、确认程度。状态标签前后一致：已完成 / 已确认 / 未达到基线 / 结论待定。
+4. 不使用"是 X，不是 Y"的对比句式，直接陈述事实。
+5. 条目不要求每条都有数字或结论。
+6. 原因未查明写"原因未查明"，后文不补充未经验证的解释。
+7. 不使用口语词（"白跑"改为"无效运行"，"一个致命问题"改为"主要问题"）。
+8. 不使用拟人表述（"watch 抓到"改为"Watch 收到事件"）。
+
+可读性要求：
+- 一句只说一件事，一句话里的括号解释不超过一个；能用普通说法时不引入内部名词。
+- 折叠区以外不出现错误码、状态常量、函数名、类名、文件名、测试数量；用系统行为描述（"返回冲突错误，并说明预留已释放"）。
+- 不用少见的英文术语和自造词（"fail-closed"改为"向调用方报错"）。
+- 只写评审需要的内容，不写证据文件名和内部流程说明。
+
+内部名词首次出现时的参考说明（使用前对照代码确认）：{{ project.internal_terms }}
+
+## 3. 发现与提 issue
+
+1. 一个问题一个 issue。提之前在 {{ _generated.forge_display }} 搜索去重；有他人 open MR 在改的文件跳过。
+2. 类型：{{ _generated.issue_types }}。涉及数据库结构、迁移、部署清单、跨模块契约的改动方向，只提设计 issue（现状、问题、方案、风险、验收方式），评审通过前不写代码。
+3. 标题：`[类型] <组件中文名>：<行为描述>`。
+4. 正文结构（折叠区以外不超过 20 行）：
+
+   ```
+   ## 问题说明
+   2～4 句。在什么操作或条件下，系统做了什么，结果是什么。
+   ## 影响
+   1～3 句。实际后果。
+   ## 实际触发评估（bug、perf、robust 类）
+   出问题的代码在实际部署中是否被调用；触发来源属于正常操作、重试或并发、故障、仅调用方出错或恶意构造、仅手工修改数据中的哪一类；上游是否已拦截；发生频率与后果。无法确认的写"未核实"。
+   ## 确认程度
+   已复现 / 推断未复现；哪些部分需要部署后验证。
+   ## 期望行为
+   1～3 条，用系统行为描述，每条不超过两行。
+   <details><summary>技术细节</summary>
+   原有流程（文件:行号）、触发路径、复现方法、设计依据（文档名 + 章节号 + 条款原文）、修复范围、回归测试要证明的缺陷。
+   </details>
+   ```
+5. 实际运行中没有触发路径的问题不提。
+6. 标签：`{{ forge.source_label }}`、类型标签、`review::待评审`；只靠代码推断、未复现的加 `推断未复现`。评审方会加 `priority::高/中/低`。
+
+{% if_type refactor %}## 4. 重构要求
+
+- 改动限定在单个文件内，不跨文件移动代码、不新增模块，不改公共接口（HTTP 路径、请求和响应字段、被其他文件调用的函数签名、数据库结构）。跨文件的拆分或解耦只提设计 issue。
+- 不与 bug 修复混在同一个 MR；同一文件有未合入的 bug 修复时，等它合入后再做。
+- 审视内容：圈复杂度高、嵌套深、函数过长；同一文件内的重复代码；一个函数混合协议解析、鉴权、业务判断、数据库访问和响应构造；分号连接的多语句行、含义不明的命名；无调用者的代码；同类错误处理不一致。纯格式调整（分号、缩进）在用户确认前不提。
+- {{ _generated.complexity_requirement }}
+- 影响一节写具体的维护问题（修改某项检查需要通读整个函数、同类校验重复几处），不写"代码更优雅"这类无法验证的说法。
+- 一个 issue 只针对一个文件。
+
+{% endif_type %}## 5. 标签状态与交接
+
+| 标签 | 含义 | {{ accounts.fixer_display }} 的动作 |
+| --- | --- | --- |
+| `review::待评审` | 等评审 | 不改正文；如需改动，改完后在 issue 下评论说明 |
+| `review::需修改` | 评审要求修改 | 按评审意见逐条修改，逐条回复改了什么，标签改回 `review::待评审` |
+| `review::已确认` | issue 成立 | 同时有 `scope::确认修复` 才开发；提出修复方案时，等评审账号回复后再实施 |
+| `review::可合入` | MR 评审通过 | 不动。项目成员在 MR 下按 {{ _generated.approve_phrases }} 表示同意后，由评审方自动合入；与 main 有冲突时，评审方把标签改为需修改并写明"{{ accounts.fixer_display }} 需执行"，按其合并 main、解决冲突 |
+| `等待前置` | 需要等其他 MR 合入或其他 issue 修复 | {{ accounts.fixer_display }} 自己加上，评论写明在等什么；前置条件满足后自己移除并继续处理 |
+| 已关闭 | 驳回或已修复 | 不重开；有新证据时在原 issue 下评论 |
+
+- 用户在评论区的确认和提问由评审方回复，{{ accounts.fixer_display }} 不直接回复用户评论。
+- 评审方需要 {{ accounts.fixer_display }} 执行的内容，都写在评论的"{{ accounts.fixer_display }} 需修改正文"或"{{ accounts.fixer_display }} 需执行"一节，或评论第一行为"对修复方案的意见"；其他评审评论（确认范围、回答用户等）不需要处理。
+- 不以"如无意见将按此实施"代替评审确认。
+- 同一项往返 {{ fixer.max_review_rounds }} 轮仍未收敛，停止处理，报告用户。
+- 不 approve、不合入、不关闭他人的 issue，不改 `review::已确认`、`review::可合入`、`scope::*`、`priority::*` 标签。
+
+## 6. 开发与 MR
+
+1. 只为同时带有 `review::已确认` 和 `scope::确认修复` 的 issue 开发，按加上 `scope::确认修复` 的时间先后逐个开始，可以同时有多个 MR。
+2. 同一个文件只能有一个 open MR 在改；要改的文件已被另一个 open MR（包括他人的）修改时，先做其他 issue。要改 `{{ _generated.hot_files_plain }}` 时通知用户后跳过。
+3. git 操作（在子任务自己的 worktree 中）：
+   - 已有分支：`git fetch origin && git switch --detach origin/<分支>`，提交后 `git push origin HEAD:refs/heads/<分支>`；
+   - 新开发：基于 `origin/{{ branches.base }}`，分支名 `{{ _generated.work_branch_types }}/<issue号>-<slug>`；
+   - 与 {{ branches.base }} 冲突时 `git merge origin/{{ branches.base }}` 解决后追加提交，不 rebase、不 force-push；
+   - 只推送自己的分支，不推送 {{ _generated.forbidden_branches_markdown }}。
+4. 不修改 {{ _generated.forbidden_files_markdown }}（合入后由评审方登记）。提交信息格式 `type(scope): 做了什么`。
+5. 测试规则：
+   - 测试按被测模块写进 `{{ project.test_file_pattern }}`；该模块还没有测试文件时才新建，文件名不按 issue 命名。
+   - bug 修复只写证明缺陷所需的最少用例（一般 1～3 个），验证证据按适用的工作流步骤提供；同类输入用 {{ project.parameterized_test_method }}合并。
+   - 复用已有测试文件中的替身和工具，不在单个测试文件里重建数据库模拟层；确需共用的放 `{{ project.shared_test_helpers }}`。
+{% if_type refactor %}   - refactor 以现有测试证明行为不变，只有改动的函数完全没有测试覆盖时才补最少的测试。{% endif_type %}
+   - {{ _generated.test_ratio_requirement }}
+6. 验证（按顺序执行，MR 必填证据）：
+
+{{ _generated.verify_requirements }}
+
+7. MR 正文：写 `Closes #<号>`，结构和写作要求与 issue 相同；标签 `{{ forge.source_label }}`、`review::待评审`；建 MR 时设置合入后删除源分支。
+
+## 7. 自主处理与清理
+
+- 同一项往返 {{ fixer.max_review_rounds }} 轮仍未收敛，停止并通知用户。
+- 评审意见与用户要求冲突、需要扩大环境权限、需要设计 issue 或修改热点文件时通知用户。
+- 自主发现问题仅限 {{ _generated.issue_types }}，每次最多 {{ fixer.max_discover_per_run }} 项。
+- 子任务使用独立 worktree，只清理本任务创建且不再使用的资源。
+- 调度、状态探测、通知和清理入口由执行方适配器安装。
+
+## 9. {{ _generated.forge_display }} 身份
+
+- 使用 {{ credentials.fixer.type_display }}（账号名 {{ accounts.fixer_display }}，{{ accounts.fixer_role }} 角色，有效期至 {{ fixer.token_expiry_display }}）。{{ _generated.fixer_credential_description }} 与 `{{ fixer.repo }}` 的仓库级推送凭据（`{{ fixer.git_credentials_file }}`）都是这个 token。
+- 不改回 {{ accounts.user }} 的 token，不修改全局 git 配置。{{ accounts.fixer_role }} 角色不能推送 {{ branches.base }}，也不能合入 MR。
+- token 续期由用户在 {{ _generated.forge_display }} 新建，由评审方替换上述两处。
+
+## 10. 会话与上下文
+
+- 模型实际上下文为 {{ fixer.model_context_tokens }} tokens。每处理完一个 issue 或 MR 开新会话，开始时读本文件和该 issue/MR 的全部评论。
+- 规则以本文件为准，不依赖会话历史中的旧说法。

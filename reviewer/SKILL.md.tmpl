@@ -1,0 +1,30 @@
+---
+name: agent-review-loop
+description: 查看、维护和重装项目的自动评审流程。
+---
+
+# {{ project.name }} 评审维护
+
+项目参数：`{{ reviewer.install_dir }}/project.toml`。评审安装目录：`{{ reviewer.install_dir }}`。状态与日志目录：`{{ reviewer.runs_dir }}`。本技能只维护评审流程，执行规则以套件和项目参数为准。
+
+## 查看状态
+
+查看 `{{ reviewer.runs_dir }}/state.json`、`events.md` 和最新运行目录；用 `python3 {{ reviewer.install_dir }}/forge_cli.py pending`、`list opened` 查询条目。检查 `crontab -l` 中本项目的标记行。结论待定的条目需要用户判断，不能自动改为可合入。
+
+## 暂停与恢复
+
+创建 `{{ reviewer.runs_dir }}/PAUSE` 暂停自动轮询，删除该文件恢复。指定 `--item` 的手动评审仍会执行。执行端按已安装的三个 hermes 定时任务名称暂停或恢复，先查看任务列表和当前状态。暂停前确认本次是否也需要等待已运行的评审结束。
+
+## 登记合入
+
+`events.md` 中的合入记录是待登记提醒。读取对应条目，按项目约定更新任务文件 `{{ reviewer.scope.tasks_file }}` 和进度文件 `{{ reviewer.scope.progress_file }}`；登记前核对实际合入 commit。合入操作由用户执行，评审方不合入、不 approve、不推送。
+
+## 调整参数与处理结论待定
+
+并发、预算、超时和静默期在项目 TOML 的 `reviewer.limits` 中修改，然后重新渲染和安装。处理结论待定时，先阅读运行目录下的 `evidence.md`、`comment.md`、`verdict.json`、Claude 输出及事件记录；向用户说明不确定的依据，取得用户结论后再按授权处理。需要重新评审时运行 `python3 {{ reviewer.install_dir }}/poll.py --dry-run --item issue:<编号>`，确认后按用户要求执行。
+
+## 重装与回滚
+
+从套件仓库运行 `python3 install/render.py projects/<项目>.toml build/<项目>/`；先运行两个安装器的 `--dry-run`，核对 diff 和命令，再按用户授权正式安装。安装前备份由安装器生成；回滚时先暂停两端任务，再恢复备份并核对 cron。凭据只能放在配置指定的文件或环境变量中，不写入仓库、命令行和日志。
+
+共享主机上不得重启或停止系统服务，不得改 `/etc` 下的守护进程配置，不得处理本任务以外的容器、进程和 Pod。

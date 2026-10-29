@@ -1,0 +1,240 @@
+[project]
+name = "example-gitlab"
+language = "python"
+language_display = "Python"
+test_file_pattern = "tests/test_<被测模块>.py"
+shared_test_helpers = "tests/conftest.py"
+parameterized_test_method = "`subTest` 或参数化"
+source_dirs = ["src"]
+source_extensions = [".py"]
+excluded_source_files = ["__init__.py"]
+hot_files = ["src/app.py"]
+test_commands = [".venv-review/bin/python -m pytest -q tests", "cd worker && go test ./..."]
+internal_terms = "任务：由系统处理的一个工作项；执行记录：任务运行的持久化记录。"
+forbidden_files = ["tasks.json", "progress.md"]
+
+[forge]
+kind = "gitlab"
+display_name = "GitLab"
+base_url = "https://gitlab.example.com"
+project = 123
+repository = "example-org/example-gitlab"
+source_label = "source::agent"
+
+[labels]
+source = "source::agent"
+
+[accounts]
+legacy_fixer_username = "maintainer-a"
+legacy_fixer_author = "maintainer-a（历史执行账号）"
+reviewer = "review-bot"
+fixer = "fixer-bot"
+user = "maintainer-a"
+user_note_since = "2026-10-27T15:20:00Z"
+legacy_cutover_display = "2026-10-27 23:20（北京时间）"
+user_mention = "@maintainer-a"
+mention = "@maintainer-a"
+fixer_display = "hermes"
+reviewer_role = "Maintainer"
+fixer_role = "Developer"
+
+[credentials.reviewer]
+file = "~/.config/example-gitlab-review/token"
+[credentials.fixer]
+type_display = "project access token"
+env = "GITLAB_TOKEN"
+dotenv_file = "/home/agent/.hermes/.env"
+
+[transport.reviewer]
+mode = "ssh_chain"
+hosts = ["build-host", "forge-proxy"]
+[transport.fixer]
+mode = "direct"
+
+[branches]
+protected = ["main", "ci", "ci-sync"]
+forbidden_prefixes = ["feat/", "task/", "protected/"]
+work_prefixes = ["fix/", "perf/", "robust/", "refactor/"]
+base = "main"
+
+[reviewer]
+skill_dir = "/home/agent/example-gitlab-remote/.claude/skills/example-gitlab-review"
+user_config_dir = "/home/agent/.config"
+relative_install_dir = ".claude/hermes-review"
+token_dir = "/home/agent/.config/example-gitlab-review"
+repo = "/home/agent/example-gitlab-remote"
+install_dir = "/home/agent/example-gitlab-remote/.claude/hermes-review"
+ref_dir = "/home/agent/example-gitlab-remote/.claude/ref"
+runs_dir = "/home/agent/example-gitlab-remote/.claude/runs/hermes-review"
+run_root = "/home/agent/example-gitlab-remote/.worktrees/hermes-review-runs"
+token_file = "~/.config/example-gitlab-review/token"
+claude_private_dir = "/home/agent/.claude"
+claude_temp_dir = "/tmp/claude-1000"
+legacy_worktree_glob = "/home/agent/example-gitlab-remote/.worktrees/hermes-review-*"
+
+# 同意按成员最近一条同意或撤回评论判断；空名单使用可写项目成员。
+[workflow.merge]
+enabled = true
+approvers = []
+github_method = "merge"
+remove_source_branch = true
+
+# 独立于模型评审的每日登记，只允许写入下面两个文件。
+[workflow.register]
+enabled = false
+cron = "0 21 * * *"
+branch = "main"
+tasks_file = "tasks.json"
+progress_file = "progress.md"
+format = "none"
+id_prefix = "hermes"
+
+
+[reviewer.git]
+fetch_url = "ssh://build-host/home/agent/example-gitlab"
+pre_fetch_cmd = ["ssh", "-o", "BatchMode=yes", "build-host", "cd /home/agent/example-gitlab && git fetch -q origin"]
+base_branch = "main"
+base_ref = "refs/remotes/origin/main"
+source_ref_prefix = "refs/remotes/origin/"
+
+[reviewer.limits]
+max_runs_per_hour = 12
+slots = 3
+max_attempts = 2
+claude_timeout = 1800
+codex_timeout = 3600
+codex_effort = "high"
+verify_budget_usd = "2"
+light_budget_usd = "1"
+quiet_minutes = 20
+mr_quiet_minutes = 5
+user_quiet_minutes = 3
+
+[reviewer.tests]
+node_path = "worker"
+command = 'PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$root" DATABASE_URL= TMPDIR="${RUN_DIR:-/tmp}/pytest-tmp" exec python3 -m pytest -q -p no:cacheprovider "${args[@]}"'
+full_command = "python3 -m pytest -q tests"
+node_command = "cd <HEAD>/worker && go test ./..."
+
+[reviewer.scope]
+tasks_file = "tasks.json"
+progress_file = "progress.md"
+deploy_dir = "deploy"
+source_glob = "src/*.py"
+design_refs = "`docs/README.md`、`docs/supporting/`"
+forbidden_paths = "`tasks.json`、`progress.md`、`deploy/`、CI 文件"
+internal_term_example = "任务（系统处理的一个工作项）"
+
+[reviewer.cron]
+path = "/home/agent/.local/bin:/usr/bin:/bin"
+python = "/usr/bin/python3"
+schedule = "*/3 * * * *"
+
+[fixer]
+adapter = "hermes"
+host = "build-host"
+hermes_home = "/home/agent/.hermes"
+repo = "/home/agent/hermes/example-gitlab"
+shared_repo = "/home/agent/example-gitlab"
+review_dir = "/home/agent/hermes/example-gitlab-review"
+ref_dir = "/home/agent/hermes/example-gitlab-review/claude-ref"
+rules_file = "/home/agent/hermes/example-gitlab-review/claude-ref/hermes-rules.md"
+env_file = "/home/agent/.hermes/.env"
+skill_dir = "/home/agent/.hermes/skills/example-gitlab-code-review"
+python = "/home/agent/hermes/example-gitlab/.venv-review/bin/python"
+model_description = "本地 qwen agent"
+model_context_tokens = "填写模型实际上下文"
+max_turns = 90
+has_gpu = false
+hardware_note = "执行端缺少生产硬件；依赖专用硬件的验证写明缺少的条件。"
+git_credentials_file = "/home/agent/.hermes/git-credentials-hermes"
+token_expiry_display = "填写实际到期日"
+scratch_dir = "/home/agent/.hermes/cache/scratch"
+subagent_branch_prefix = "hermes-subagent/"
+notify_channel = "企微"
+notify_state_file = "/home/agent/.hermes/state/gitlab_issue_watch.json"
+token_notice_file = "/home/agent/.hermes/state/token_expiry_notice"
+max_fail_alerts = 3
+worktree_min_age_display = "3 小时"
+scratch_min_age_display = "24 小时"
+worktree_min_age_seconds = 10800
+cleanup_skip_dirs = [".git", "node_modules", ".venv-review"]
+scratch_min_age_seconds = 86400
+scratch_suffixes = [".tar"]
+scratch_prefixes = ["pytest-of-"]
+token_notice_days = 7
+max_pending_issues = 5
+max_discover_per_run = 1
+max_review_rounds = 3
+
+[fixer.deploy]
+image_build = false
+namespace = "example-gitlab-review"
+forbidden_namespaces = ["example-gitlab-k44", "example-gitlab-system", "example-gitlab-demo", "protected-system"]
+cluster_object_prefix = "example-gitlab-review-"
+node = "build-host"
+environment = "执行端 k3s"
+lock_file = "/home/agent/.hermes/state/example-gitlab-review-deploy.lock"
+lock_wait_seconds = 2400
+image_prefix = "example-gitlab-review/"
+ci_builder_pattern = "example-gitlab-ci-*"
+ci_builder_container_pattern = "buildx_buildkit_example-gitlab-ci"
+registry = "registry.example.com"
+certificate_file = "certs/registry.example.com.crt"
+certificate_name = "registry.example.com.crt"
+buildkit_image = "moby/buildkit:v0.23.2"
+builder_prefix = "hermes-review-"
+
+[fixer.approvals]
+mode = "off"
+cron_mode = "approve"
+timeout = 300
+# 线上 deny 列表未包含 demo 的 --namespace 形式，按基准保留。
+namespace_long_deny = ["example-gitlab-k44", "example-gitlab-system", "protected-system"]
+push_deny_branches = ["main", "ci"]
+push_deny_prefixes = ["protected/"]
+
+[fixer.delegation]
+worktree_isolation = true
+max_concurrent_children = 3
+
+[fixer.cron]
+dispatcher_duplicate_note = "重复条目可能导致同一项工作并行执行多次"
+dispatcher_name = "example-gitlab 自主任务（分派模式，10m）"
+dispatcher_schedule = "10m"
+dispatcher_filename = "example-gitlab-dispatcher.md"
+dispatcher_legacy_id = ""
+notify_name = "example-gitlab issue 监控"
+notify_schedule = "10m"
+cleanup_name = "example-gitlab worktree 与临时文件清理"
+cleanup_schedule = "120m"
+deliver = "origin"
+cleanup_deliver = "local"
+
+
+[workflow]
+issue_types = ["bug", "perf", "robust", "refactor"]
+language = "zh"
+
+[[workflow.verify]]
+name = "unit"
+run = "python3 -m pytest -q tests"
+reviewer_run = 'python3 -m pytest -q -p no:cacheprovider "${args[@]:-tests}"'
+for_types = []
+rerun_by_reviewer = true
+
+[[workflow.verify]]
+name = "regression"
+builtin = "regression"
+for_types = ["bug", "robust"]
+
+[[workflow.verify]]
+name = "deploy-smoke"
+run = "hooks/smoke.sh {branch} {sha}"
+when_paths = ["src/**", "deploy/**"]
+lock = "deploy"
+description = "在测试环境部署并冒烟"
+
+[workflow.metrics]
+complexity_cmd = "python3 {kit}/complexity.py {file}"
+test_ratio_limit = 2.0
