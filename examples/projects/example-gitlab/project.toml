@@ -164,6 +164,7 @@ scratch_suffixes = [".tar"]
 scratch_prefixes = ["pytest-of-"]
 token_notice_days = 7
 max_pending_issues = 5
+max_open_issues = 30   # 执行方打开的 issue 达到此数时暂停自主发现；0 表示不限
 max_discover_per_run = 1
 max_review_rounds = 3
 

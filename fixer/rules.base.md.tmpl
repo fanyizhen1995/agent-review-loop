@@ -112,6 +112,7 @@
 - 同一项往返 {{ fixer.max_review_rounds }} 轮仍未收敛，停止并通知用户。
 - 评审意见与用户要求冲突、需要扩大环境权限、需要设计 issue 或修改热点文件时通知用户。
 - 自主发现问题仅限 {{ _generated.issue_types }}，每次最多 {{ fixer.max_discover_per_run }} 项。
+- 执行方打开的 issue 达到 {{ fixer.max_open_issues }} 个时暂停自主发现和提新 issue，先推进现有 issue（修改、开发、等待合入），数量降到上限以下后再继续。
 - 子任务使用独立 worktree，只清理本任务创建且不再使用的资源。
 - 调度、状态探测、通知和清理入口由执行方适配器安装。
 

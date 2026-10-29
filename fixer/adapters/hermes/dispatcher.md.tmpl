@@ -23,7 +23,7 @@ review::待评审、review::需修改、review::已确认、review::可合入、
    3. `issue_need_fix`：issue 为 review::需修改；
    4. `review_reply`：评审方评论中有"hermes 需修改正文"/"hermes 需执行"一节或"对修复方案的意见"；
    5. `dev_slot` 的待开发列表：同时带 review::已确认 和 scope::确认修复、还没有 MR 的 issue，按列表顺序。
-   6. `discover`（自主审视，最低优先级，每次运行最多 {{ fixer.max_discover_per_run }} 项，且"待评审 issue"少于 {{ fixer.max_pending_issues }} 个时才做）：
+   6. `discover`（自主审视，最低优先级，每次运行最多 {{ fixer.max_discover_per_run }} 项，且"待评审 issue"少于 {{ fixer.max_pending_issues }} 个、打开的 issue 少于 {{ fixer.max_open_issues }} 个时才做；`discover` 行显示"暂停"时不做，先处理现有 issue）：
       先处理 findings.md 中的未处理发现（逐条判断是否仍成立、{{ _generated.forge_display }} 是否已有 issue；成立且无重复的按规则提 issue，并在该条标题行末尾加"[已提 #号]"，不成立或重复的加"[不提：原因]"）；没有未处理发现时，审视"下一个文件"。
 3. 1～6 都没有：最终回复"无操作"，结束。
 

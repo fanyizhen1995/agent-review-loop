@@ -14,6 +14,10 @@ from kit.config import load_config
 from kit.forge import make_forge
 
 
+
+class _DiscoverPaused(Exception):
+    """打开的 issue 达到上限，本轮不做自主审视。"""
+
 def configuration():
     location = Path(__file__).resolve().parent / "project.toml"
     import os
@@ -140,8 +144,12 @@ def main():
     except Exception as e:
         lines.append(f"wip: 检查失败 {e}")
     lines.append("open_mr_files: " + (" ; ".join(mr_files) if mr_files else "none"))
-    # 自主审视：findings.md 中尚未处理的发现条数，以及下一个未审视的源码文件
+    # 自主审视：findings.md 中尚未处理的发现条数，以及下一个未审视的源码文件。
+    # 执行方打开的 issue 达到 fixer.max_open_issues 时暂停，先处理现有 issue。
+    max_open = int(CFG["fixer"].get("max_open_issues", 30))
     try:
+        if max_open > 0 and len(issues) >= max_open:
+            raise _DiscoverPaused(f"discover: 暂停 | 打开的 issue {len(issues)}/{max_open}，先处理现有 issue")
         review_dir = os.path.expanduser(CFG["fixer"]["review_dir"])
         heads = [l for l in Path(review_dir, "findings.md").read_text(encoding="utf-8").splitlines() if l.startswith("### F-")]
         unfiled = [l.split()[1] for l in heads if "已提 #" not in l and "不提" not in l]
@@ -163,7 +171,9 @@ def main():
         pending_review = sum(1 for i in issues if "review::待评审" in i.get("labels", []))
         lines.append(f"discover: 未处理发现 {len(unfiled)} 条（{','.join(unfiled[:6])}）| 下一个文件 "
                      f"{todo[0] if todo else 'none'} | 已审视 {len(done)}/{len(src)}，他人 MR 占用 {len([f for f in src if f in busy and f not in done])} | "
-                     f"待评审 issue {pending_review}")
+                     f"待评审 issue {pending_review} | 打开的 issue {len(issues)}/{max_open}")
+    except _DiscoverPaused as paused:
+        lines.append(str(paused))
     except Exception as e:
         lines.append(f"discover: 检查失败 {e}")
     lines.append(f"dev_slot: {slot} | {slot_note} | open_hermes_mr: {open_hermes_mr}")

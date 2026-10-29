@@ -87,7 +87,7 @@ hook 路径相对已安装的 `reviewer.install_dir/hooks/`，例如 `hook="regi
 
 ## Hermes 执行方示例
 
-`fixer.adapter="hermes"` 选择示例适配器。`host`、`hermes_home`、`repo`、`review_dir`、`ref_dir`、`rules_file` 和 `skill_dir` 确定安装位置；运行脚本、通知状态、scratch 和清理边界也由 fixer 字段配置。 `ssh_host` 可选，填写 SSH 连接用的主机别名（与显示用的 `host` 不同时）；`hermes_cli` 可选，填写执行端 hermes 命令路径（非交互 SSH 的 PATH 不含该命令时使用，默认 `hermes`）。
+`fixer.adapter="hermes"` 选择示例适配器。`host`、`hermes_home`、`repo`、`review_dir`、`ref_dir`、`rules_file` 和 `skill_dir` 确定安装位置；运行脚本、通知状态、scratch 和清理边界也由 fixer 字段配置。 `ssh_host` 可选，填写 SSH 连接用的主机别名（与显示用的 `host` 不同时）；`hermes_cli` 可选，填写执行端 hermes 命令路径（非交互 SSH 的 PATH 不含该命令时使用，默认 `hermes`）。 `max_pending_issues` 为"待评审"issue 的上限，`max_open_issues` 为执行方打开状态 issue 的总上限（默认 30，0 表示不限），任一达到上限时暂停自主发现和提新 issue，先推进现有 issue；`max_discover_per_run` 为每次运行最多的自主审视项数。
 
 `fixer.approvals` 配置模式、超时以及命名空间和推送禁止项。文字规则与 deny 清单都应覆盖实际环境中的命令形式，不得绕过匹配。`fixer.delegation` 配置 worktree 隔离和子任务上限。`fixer.cron` 配置分派、通知、清理任务的名称、间隔和投递渠道；名称用于幂等更新。
 
