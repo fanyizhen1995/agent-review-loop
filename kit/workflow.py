@@ -76,6 +76,18 @@ def normalize(config, raw):
     limit = metrics['test_ratio_limit']
     if type(limit) not in (int, float) or not math.isfinite(limit) or limit < 0:
         raise ValueError('workflow.metrics.test_ratio_limit 必须为非负数')
+    metrics.setdefault('test_min_lines', 40)
+    metrics.setdefault('refactor_test_limit', 50)
+    metrics.setdefault('coverage_cmd', '')
+    for key in ('test_min_lines', 'refactor_test_limit'):
+        if type(metrics[key]) is not int or metrics[key] < 0:
+            raise ValueError('workflow.metrics.' + key + ' 必须为非负整数')
+    if not isinstance(metrics['coverage_cmd'], str):
+        raise ValueError('workflow.metrics.coverage_cmd 必须为命令字符串')
+    project = config.setdefault('project', {})
+    project.setdefault('test_dirs', [])
+    if not isinstance(project['test_dirs'], list) or any(not isinstance(x, str) or not x for x in project['test_dirs']):
+        raise ValueError('project.test_dirs 必须为目录列表')
     for key in ('approve_phrases', 'revoke_phrases'):
         value = workflow['merge'].setdefault(key, [])
         if not isinstance(value, list) or any(not isinstance(x, str) or not x.strip() or '\n' in x for x in value):
@@ -83,6 +95,18 @@ def normalize(config, raw):
     config['fixer'].setdefault('adapter', 'hermes')
     if config['fixer']['adapter'] != 'hermes':
         raise ValueError('fixer.adapter 尚未提供该适配器，目前只支持 hermes')
+
+
+def test_scale_text(config):
+    """测试规模要求：按净增行数（新增减删除）计算，重构默认不新增测试。"""
+    m = config['workflow']['metrics']
+    if not m['test_ratio_limit']:
+        return '本项目不限制测试与源码的行数比例。'
+    text = (f"测试规模按净增行数（新增减删除）计算：bug、perf、robust 类新增测试不超过源码净增行数的 {m['test_ratio_limit']:g} 倍，"
+            f"最少允许 {m['test_min_lines']} 行")
+    if 'refactor' in config['workflow']['issue_types']:
+        text += (f"；refactor 类默认不新增测试，只有被改函数完全没有测试覆盖时补最少用例，不超过 {m['refactor_test_limit']} 行")
+    return text + '；超出时在 MR 写明理由，评审按 `git diff --numstat` 的净增行数核对，无合理理由判需修改。'
 
 
 def requirements(config):
@@ -106,6 +130,5 @@ def requirements(config):
     metrics = config['workflow']['metrics']
     if metrics['complexity_cmd'] and 'refactor' in config['workflow']['issue_types']:
         lines.append('- refactor：用 `' + metrics['complexity_cmd'] + '` 给出并复核改动前后的圈复杂度、行数、嵌套深度。')
-    if metrics['test_ratio_limit']:
-        lines.append(f"- 新增测试行数一般不超过源码新增行数的 {metrics['test_ratio_limit']:g} 倍；超过时在 MR 写明理由。")
+    # 测试规模要求已写在规则"测试规则"与评审标准"测试规模"中，这里不重复
     return '\n'.join(lines) or '- 本项目未配置验证步骤；MR 明确记录验证范围及尚未验证的条件。'

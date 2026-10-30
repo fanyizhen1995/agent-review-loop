@@ -41,6 +41,7 @@
 
 {% if_type perf %}5. perf 类：检查度量方法（交替运行、样本数、方差），数据是否支持结论；不在本机复测。{% endif_type %}
    测试规模：测试按被测模块写进已有测试文件（模块没有测试文件时才新建，不按 issue 命名）；用例数为证明缺陷所需的最少数量，同类输入合并为参数化；复用已有替身，不在单个测试文件中重建数据库模拟层；{{ _generated.test_ratio_requirement }}
+   测试整改（只改测试目录 {{ _generated.test_dirs_markdown }} 的 refactor）：全量测试在 BASE 和 HEAD 上都通过；逐条核对删除或合并的用例由哪个保留用例覆盖，断言语义不得丢失；{{ _generated.coverage_requirement }}净增行数为正时判需修改。
 {% if_type refactor %}   refactor 类：diff 只做结构调整，不夹带行为变化；按 workflow.metrics 中启用的命令复核改动前后的数值；未配置时不要求复杂度数值；以现有测试证明行为不变，只有改动函数完全没有覆盖时才要求补最少的测试，补充的测试在 BASE 和 HEAD 上都通过；逐个 hunk 确认分支条件、异常类型、返回值、副作用顺序与原实现一致。{% endif_type %}
 6. 文本：MR 正文符合下方编写规则。
 

@@ -68,7 +68,11 @@ def context_for(config):
     context['_generated']['issue_types'] = ' / '.join(config['workflow']['issue_types'])
     metrics = config['workflow']['metrics']
     context['_generated']['complexity_requirement'] = ('度量：`' + metrics['complexity_cmd'] + '`，给出改动前后的数值。') if metrics['complexity_cmd'] else '本项目未要求复杂度数值。'
-    context['_generated']['test_ratio_requirement'] = (f"新增测试行数一般不超过源码新增行数的 {metrics['test_ratio_limit']:g} 倍，超过时说明理由。") if metrics['test_ratio_limit'] else '本项目不限制测试与源码的行数比例。'
+    from kit.workflow import test_scale_text
+    context['_generated']['test_ratio_requirement'] = test_scale_text(config)
+    test_dirs = config['project'].get('test_dirs', [])
+    context['_generated']['test_dirs_markdown'] = '、'.join('`' + d + '/`' for d in test_dirs) or '（未配置）'
+    context['_generated']['coverage_requirement'] = ('覆盖率：改动前后在同一环境运行 `' + metrics['coverage_cmd'] + '`，逐个被测模块对比，任一模块的覆盖率不得下降。') if metrics['coverage_cmd'] else '本项目未配置覆盖率命令：改动前后全量测试均需通过，并逐条说明删除或合并的用例由哪个保留用例覆盖。'
     return context
 
 

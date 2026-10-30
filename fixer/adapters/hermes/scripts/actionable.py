@@ -153,8 +153,9 @@ def main():
         review_dir = os.path.expanduser(CFG["fixer"]["review_dir"])
         heads = [l for l in Path(review_dir, "findings.md").read_text(encoding="utf-8").splitlines() if l.startswith("### F-")]
         unfiled = [l.split()[1] for l in heads if "已提 #" not in l and "不提" not in l]
+        scan_dirs = list(CFG["project"]["source_dirs"]) + list(CFG["project"].get("test_dirs", []))
         done = {l.split("|")[0].strip() for l in Path(review_dir, "reviewed-files.txt").read_text(encoding="utf-8").splitlines()
-                if any(l.startswith(d.rstrip("/") + "/") for d in CFG["project"]["source_dirs"])}
+                if any(l.startswith(d.rstrip("/") + "/") for d in scan_dirs)}
         busy = set()
         for m in FORGE.list_items("mr", "opened", [], limit=100):
             if HERMES_LABEL in m.get("labels", []):
@@ -167,7 +168,15 @@ def main():
         src = sorted(f"{directory}/{name}" for directory in CFG["project"]["source_dirs"]
                      for name in os.listdir(os.path.join(repo, directory))
                      if any(name.endswith(ext) for ext in CFG["project"]["source_extensions"]) and name not in CFG["project"]["excluded_source_files"])
-        todo = [f for f in src if f not in done and f not in busy]
+        # 源码审视完后审视测试目录；fixer.discover_priority_files 中的测试文件排在最前
+        priority = list(CFG["fixer"].get("discover_priority_files", []))
+        tests = sorted(f"{directory}/{name}" for directory in CFG["project"].get("test_dirs", [])
+                       if os.path.isdir(os.path.join(repo, directory))
+                       for name in os.listdir(os.path.join(repo, directory))
+                       if any(name.endswith(ext) for ext in CFG["project"]["source_extensions"]) and name not in CFG["project"]["excluded_source_files"])
+        tests = [f for f in priority if f in tests] + [f for f in tests if f not in priority]
+        todo = [f for f in src + tests if f not in done and f not in busy]
+        src = src + tests
         pending_review = sum(1 for i in issues if "review::待评审" in i.get("labels", []))
         lines.append(f"discover: 未处理发现 {len(unfiled)} 条（{','.join(unfiled[:6])}）| 下一个文件 "
                      f"{todo[0] if todo else 'none'} | 已审视 {len(done)}/{len(src)}，他人 MR 占用 {len([f for f in src if f in busy and f not in done])} | "

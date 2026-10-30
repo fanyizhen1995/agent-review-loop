@@ -59,6 +59,17 @@
 
 同意来自成员评论；最近有效同意或撤回决定当前状态。执行方和评审机器人不能作为同意人。分支保护和当前 HEAD 检查继续生效。
 
+`[workflow.metrics]` 中与测试规模相关的参数：
+
+| 参数 | 含义 |
+| --- | --- |
+| `test_ratio_limit` | bug、perf、robust 类新增测试与源码的净增行数比例上限；0 表示不限 |
+| `test_min_lines` | 上述类型新增测试最少允许的行数（默认 40），避免源码改动很小时无法写回归用例 |
+| `refactor_test_limit` | refactor 类在被改函数完全没有覆盖时补测试的行数上限（默认 50）；refactor 默认不新增测试 |
+| `coverage_cmd` | 测试整改前后对比覆盖率的命令；为空时改为逐条说明删除或合并的用例由哪个保留用例覆盖 |
+
+`project.test_dirs`：源码审视完后继续审视的测试目录；测试整改按 refactor 类处理，净增行数应为负数或零。`fixer.discover_priority_files`：审视测试目录时优先处理的文件。
+
 `[workflow.register]`：
 
 | 字段 | 含义 |

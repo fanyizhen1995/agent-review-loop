@@ -6,6 +6,7 @@ test_file_pattern = "tests/test_<被测模块>.py"
 shared_test_helpers = "tests/conftest.py"
 parameterized_test_method = "`subTest` 或参数化"
 source_dirs = ["src"]
+test_dirs = ["tests"]          # 源码审视完后审视的测试目录
 source_extensions = [".py"]
 excluded_source_files = ["__init__.py"]
 hot_files = ["src/app.py"]
@@ -239,3 +240,6 @@ description = "在测试环境部署并冒烟"
 [workflow.metrics]
 complexity_cmd = "python3 {kit}/complexity.py {file}"
 test_ratio_limit = 2.0
+test_min_lines = 40           # bug/perf/robust 类新增测试最少允许的行数
+refactor_test_limit = 50      # refactor 类在被改函数无覆盖时补测试的上限
+coverage_cmd = "python3 -m pytest -q tests --cov=src --cov-report=term"   # 测试整改前后对比覆盖率

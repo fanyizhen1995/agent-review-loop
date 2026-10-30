@@ -85,6 +85,16 @@
 - 同一项往返 {{ fixer.max_review_rounds }} 轮仍未收敛，停止处理，报告用户。
 - 不 approve、不合入、不关闭他人的 issue，不改 `review::已确认`、`review::可合入`、`scope::*`、`priority::*` 标签。
 
+### 测试代码的审视与整改
+
+测试目录 {{ _generated.test_dirs_markdown }} 也在自主审视范围内，排在源码之后（优先列出的文件见分派说明）。测试整改只做结构调整，issue 与 MR 按 refactor 类处理，标题写 `[refactor] 测试：<文件>：<要改善什么>`。
+
+- 审视内容：多个测试文件各自搭建的相同替身或工具（合并到 `{{ project.shared_test_helpers }}`）；断言重复或互相覆盖的用例；被测代码已删除但仍保留的用例；可合并为参数化的同类用例；运行明显偏慢的用例。
+- 影响一节写具体的维护问题（同一替身重复几处、修改一个接口需要同步改几处测试），实际触发评估改为写维护收益。
+- 一个 MR 只改一个测试文件，或只提取一类公共替身。
+- 验收：全量测试在改动前后都通过；原有断言的语义保留，删除或合并的用例在 MR 中逐条说明由哪个保留用例覆盖；{{ _generated.coverage_requirement }}
+- 测试整改的净增行数应为负数或为零。
+
 ## 6. 开发与 MR
 
 1. 只为同时带有 `review::已确认` 和 `scope::确认修复` 的 issue 开发，按加上 `scope::确认修复` 的时间先后逐个开始，可以同时有多个 MR。
@@ -99,7 +109,6 @@
    - 测试按被测模块写进 `{{ project.test_file_pattern }}`；该模块还没有测试文件时才新建，文件名不按 issue 命名。
    - bug 修复只写证明缺陷所需的最少用例（一般 1～3 个），验证证据按适用的工作流步骤提供；同类输入用 {{ project.parameterized_test_method }}合并。
    - 复用已有测试文件中的替身和工具，不在单个测试文件里重建数据库模拟层；确需共用的放 `{{ project.shared_test_helpers }}`。
-{% if_type refactor %}   - refactor 以现有测试证明行为不变，只有改动的函数完全没有测试覆盖时才补最少的测试。{% endif_type %}
    - {{ _generated.test_ratio_requirement }}
 6. 验证（按顺序执行，MR 必填证据）：
 
